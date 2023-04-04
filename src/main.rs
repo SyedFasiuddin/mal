@@ -3,6 +3,7 @@ use std::process::exit;
 use std::rc::Rc;
 use regex::Regex;
 
+#[derive(Debug)]
 enum MalType {
     Nil,
     Bool(bool),
@@ -11,6 +12,7 @@ enum MalType {
     List(Rc<Vec<MalType>>),
 }
 
+#[derive(Debug)]
 enum MalErr {
     ParseErr(String),
 }
@@ -33,6 +35,19 @@ impl Reader {
         match self.tokens.get(self.pos) {
             Some(token) => Some(token.to_owned()),
             None => None,
+        }
+    }
+}
+
+impl MalType {
+    fn pr_str(&self) -> String {
+        match self {
+            Self::Nil => "nil".to_string(),
+            Self::Bool(true) => "true".to_string(),
+            Self::Bool(false) => "false".to_string(),
+            Self::Int(num) => format!("{num}"),
+            Self::Sym(s) => s.clone(),
+            Self::List(l) => format!("{:?}", l),
         }
     }
 }
@@ -108,14 +123,14 @@ fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
     }
 }
 
-fn read_str(s: &str) {
+fn read_str(s: &str) -> Result<MalType, MalErr> {
     let tokens = tokenize(&s);
     // println!("{:?}", tokens);
     let mut reader = Reader {
         tokens,
         pos: 0,
     };
-    let _ = read_form(&mut reader);
+    read_form(&mut reader)
 }
 
 fn rpl() { // read print loop
@@ -126,7 +141,13 @@ fn rpl() { // read print loop
         stdin().read_line(&mut buf).expect("Failed to read stdin");
 
         if !buf.is_empty() {
-            read_str(&buf);
+            match read_str(&buf) {
+                Ok(mal) => println!("{}", mal.pr_str()),
+                Err(e) => {
+                    eprintln!("Something went wrong: {e:?}");
+                    exit(1);
+                }
+            }
         }
 
         buf.clear();
