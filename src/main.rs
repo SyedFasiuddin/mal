@@ -1,5 +1,7 @@
 use std::io::{stdin, stdout, Write};
 
+use regex::Regex;
+
 struct Reader {
     tokens: Vec<String>,
     pos: usize,
@@ -20,6 +22,25 @@ impl Reader {
             None => None,
         }
     }
+}
+
+fn tokenize(s: &str) -> Vec<String> {
+    let reg = Regex::new(
+       r###"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###
+       ).expect("Invalid regular expression provided");
+
+    let mut vec = vec![];
+    for cap in reg.captures_iter(s) {
+        // comment
+        if cap[1].starts_with(";") {
+            continue;
+        }
+        vec.push(String::from(&cap[1]))
+    }
+    vec
+}
+
+fn read_str() {
 }
 
 fn rpl() { // read print loop
