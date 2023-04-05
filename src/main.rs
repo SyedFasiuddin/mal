@@ -8,6 +8,7 @@ enum MalType {
     Nil,
     Bool(bool),
     Int(i32),
+    Str(String),
     Sym(String),
     List(Rc<Vec<MalType>>),
 }
@@ -46,6 +47,7 @@ impl MalType {
             Self::Bool(true) => "true".to_string(),
             Self::Bool(false) => "false".to_string(),
             Self::Int(num) => format!("{num}"),
+            Self::Str(s) => s.clone(),
             Self::Sym(s) => s.clone(),
             Self::List(list) => {
                 let ret: Vec<String> = list.iter().map(|x| x.pr_str()).collect();
@@ -92,6 +94,7 @@ fn read_list(rd: &mut Reader, end: &str) -> Result<MalType, MalErr> {
 
 fn read_atom(rd: &mut Reader) -> MalType {
     let num_re = Regex::new(r"^-?[0-9]+$").expect("Invalid regular expression for number");
+    let str_re = Regex::new(r#""(.)*""#).expect("Invalid regular expression for string");
     match rd.next() {
         Some(token) => match &token[..] {
             "nil" => MalType::Nil,
@@ -100,6 +103,8 @@ fn read_atom(rd: &mut Reader) -> MalType {
             _ => {
                 if num_re.is_match(&token) {
                     MalType::Int(token.parse().unwrap())
+                } else if str_re.is_match(&token) {
+                    MalType::Str(token.to_string())
                 } else {
                     MalType::Sym(token.to_string())
                 }
