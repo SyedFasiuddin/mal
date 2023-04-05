@@ -28,18 +28,12 @@ struct Reader {
 
 impl Reader {
     fn next(&mut self) -> Option<String> {
-        self.pos = self.pos + 1;
-        match self.tokens.get(self.pos - 1) {
-            Some(token) => Some(token.to_owned()),
-            None => None,
-        }
+        self.pos += 1;
+        self.tokens.get(self.pos - 1).map(|token| token.to_owned())
     }
 
     fn peek(&self) -> Option<String> {
-        match self.tokens.get(self.pos) {
-            Some(token) => Some(token.to_owned()),
-            None => None,
-        }
+        self.tokens.get(self.pos).map(|token| token.to_owned())
     }
 }
 
@@ -69,7 +63,7 @@ fn tokenize(s: &str) -> Vec<String> {
     let mut vec = vec![];
     for cap in reg.captures_iter(s) {
         // comment
-        if cap[1].starts_with(";") {
+        if cap[1].starts_with(';') {
             continue;
         }
         vec.push(String::from(&cap[1]))
@@ -136,7 +130,7 @@ fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
 }
 
 fn read_str(s: &str) -> Result<MalType, MalErr> {
-    let tokens = tokenize(&s);
+    let tokens = tokenize(s);
     // println!("{:?}", tokens);
     let mut reader = Reader {
         tokens,
