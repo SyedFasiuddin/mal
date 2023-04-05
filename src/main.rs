@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::io::{stdin, stdout, Write};
 use std::process::exit;
 use std::rc::Rc;
 use regex::Regex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum MalType {
     Nil,
     Bool(bool),
@@ -11,11 +12,13 @@ enum MalType {
     Str(String),
     Sym(String),
     List(Rc<Vec<MalType>>),
+    Func(fn(i32, i32) -> i32),
 }
 
 #[derive(Debug)]
 enum MalErr {
     ParseErr(String),
+    FuncNotFound,
 }
 
 struct Reader {
@@ -53,6 +56,7 @@ impl MalType {
                 let ret: Vec<String> = list.iter().map(|x| x.pr_str()).collect();
                 format!("{}{}{}", "(", ret.join(" "), ")")
             }
+            Self::Func(_f) => todo!(),
         }
     }
 }
@@ -141,7 +145,66 @@ fn read_str(s: &str) -> Result<MalType, MalErr> {
     read_form(&mut reader)
 }
 
+fn eval_ast(ast: &MalType, env: &HashMap<&str, MalType>) -> Result<MalType, MalErr> {
+    match ast {
+        MalType::Sym(s) => {
+            match env.get(&s[..]) {
+                Some(f) => Ok(f.clone()),
+                None => {
+                    eprintln!("Unable to find {s} in current environment");
+                    Err(MalErr::FuncNotFound)
+                }
+            }
+        },
+        MalType::List(l) => {
+            let mut vec = vec![];
+            for each in l.iter() {
+                vec.push(eval(each.clone(), env.clone()));
+            }
+            Ok(MalType::List(Rc::new(vec)))
+        }
+        _ => Ok(ast.clone()),
+    }
+}
+
+fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
+    match ast {
+        MalType::List(ref l) => {
+            if l.is_empty() {
+                MalType::List(l.clone())
+            } else {
+                match eval_ast(&ast, &env).unwrap() {
+                    MalType::List(ref l) => {
+                        match l.clone().to_vec()[..] {
+                            [MalType::Func(f), MalType::Int(a), MalType::Int(b)] =>
+                                MalType::Int(f(a, b)),
+                            _ => todo!(),
+                        }
+
+                    }
+                    _ => {
+                        eprintln!("Unexpected token at first position of list");
+                        exit(1);
+                    }
+                }
+            }
+        }
+        _ => eval_ast(&ast, &env).unwrap(),
+    }
+}
+
 fn rpl() { // read print loop
+    let add = MalType::Func(|a: i32, b: i32| { a + b });
+    let sub = MalType::Func(|a: i32, b: i32| { a - b });
+    let mul = MalType::Func(|a: i32, b: i32| { a * b });
+    let div = MalType::Func(|a: i32, b: i32| { a / b });
+
+    let mut env: HashMap<&str, MalType> = HashMap::new();
+    env.insert("+", add);
+    env.insert("-", sub);
+    env.insert("*", mul);
+    env.insert("/", div);
+
     let mut buf = String::new();
     loop {
         print!("mal> ");
@@ -150,7 +213,7 @@ fn rpl() { // read print loop
 
         if !buf.is_empty() {
             match read_str(&buf) {
-                Ok(mal) => println!("{}", mal.pr_str()),
+                Ok(mal) => println!("{}", eval(mal, env.clone()).pr_str()),
                 Err(e) => {
                     eprintln!("Something went wrong: {e:?}");
                     exit(1);
