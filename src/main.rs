@@ -47,7 +47,10 @@ impl MalType {
             Self::Bool(false) => "false".to_string(),
             Self::Int(num) => format!("{num}"),
             Self::Sym(s) => s.clone(),
-            Self::List(l) => format!("{:?}", l),
+            Self::List(list) => {
+                let ret: Vec<String> = list.iter().map(|x| x.pr_str()).collect();
+                format!("{}{}{}", "(", ret.join(" "), ")")
+            }
         }
     }
 }
