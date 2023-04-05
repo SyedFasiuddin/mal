@@ -1,8 +1,8 @@
+use regex::Regex;
 use std::collections::HashMap;
 use std::io::{stdin, stdout, Write};
 use std::process::exit;
 use std::rc::Rc;
-use regex::Regex;
 
 #[derive(Debug, Clone)]
 enum MalType {
@@ -56,9 +56,9 @@ impl MalType {
 }
 
 fn tokenize(s: &str) -> Vec<String> {
-    let reg = Regex::new(
-       r###"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###
-       ).expect("Invalid regular expression provided");
+    let reg =
+        Regex::new(r###"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###)
+            .expect("Invalid regular expression provided");
 
     let mut vec = vec![];
     for cap in reg.captures_iter(s) {
@@ -106,9 +106,8 @@ fn read_atom(rd: &mut Reader) -> MalType {
                 } else {
                     MalType::Sym(token.to_string())
                 }
-            }
-            // any_thing => MalType::Int(any_thing.parse::<i32>().expect("unable to parse int")),
-        }
+            } // any_thing => MalType::Int(any_thing.parse::<i32>().expect("unable to parse int")),
+        },
         None => {
             eprintln!("Expected token found none");
             exit(1);
@@ -124,7 +123,7 @@ fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
                 read_list(rd, ")")
             }
             _ => Ok(read_atom(rd)),
-        }
+        },
         None => Err(MalErr::ParseErr("No tokens found".to_string())),
     }
 }
@@ -132,22 +131,17 @@ fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
 fn read_str(s: &str) -> Result<MalType, MalErr> {
     let tokens = tokenize(s);
     // println!("{:?}", tokens);
-    let mut reader = Reader {
-        tokens,
-        pos: 0,
-    };
+    let mut reader = Reader { tokens, pos: 0 };
     read_form(&mut reader)
 }
 
 fn eval_ast(ast: &MalType, env: &HashMap<&str, MalType>) -> Result<MalType, MalErr> {
     match ast {
-        MalType::Sym(s) => {
-            match env.get(&s[..]) {
-                Some(f) => Ok(f.clone()),
-                None => {
-                    eprintln!("Unable to find {s} in current environment");
-                    Err(MalErr::FuncNotFound)
-                }
+        MalType::Sym(s) => match env.get(&s[..]) {
+            Some(f) => Ok(f.clone()),
+            None => {
+                eprintln!("Unable to find {s} in current environment");
+                Err(MalErr::FuncNotFound)
             }
         },
         MalType::List(l) => {
@@ -168,14 +162,12 @@ fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
                 MalType::List(l.clone())
             } else {
                 match eval_ast(&ast, &env).unwrap() {
-                    MalType::List(ref l) => {
-                        match l.clone().to_vec()[..] {
-                            [MalType::Func(f), MalType::Int(a), MalType::Int(b)] =>
-                                MalType::Int(f(a, b)),
-                            _ => todo!(),
+                    MalType::List(ref l) => match l.clone().to_vec()[..] {
+                        [MalType::Func(f), MalType::Int(a), MalType::Int(b)] => {
+                            MalType::Int(f(a, b))
                         }
-
-                    }
+                        _ => todo!(),
+                    },
                     _ => {
                         eprintln!("Unexpected token at first position of list");
                         exit(1);
@@ -187,11 +179,12 @@ fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
     }
 }
 
-fn rpl() { // read print loop
-    let add = MalType::Func(|a: i32, b: i32| { a + b });
-    let sub = MalType::Func(|a: i32, b: i32| { a - b });
-    let mul = MalType::Func(|a: i32, b: i32| { a * b });
-    let div = MalType::Func(|a: i32, b: i32| { a / b });
+fn rpl() {
+    // read print loop
+    let add = MalType::Func(|a: i32, b: i32| a + b);
+    let sub = MalType::Func(|a: i32, b: i32| a - b);
+    let mul = MalType::Func(|a: i32, b: i32| a * b);
+    let div = MalType::Func(|a: i32, b: i32| a / b);
 
     let mut env: HashMap<&str, MalType> = HashMap::new();
     env.insert("+", add);
