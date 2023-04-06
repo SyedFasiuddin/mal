@@ -227,35 +227,25 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                 return MalType::List(l);
             }
 
-            match &l[0] {
-                MalType::Sym(s) if s == "def!" => match &l.to_vec()[..] {
-                    [_, MalType::Sym(x), y] => {
-                        let evaluated = eval(y.clone(), env);
-                        env.set(x, evaluated.clone());
-                        evaluated
-                    }
-                    _ => unreachable!(
-                        "'def!' cannot work this way, either the types or length provided is wrong"
-                    ),
-                },
-                MalType::Sym(s) if s == "let*" => {
+            match &l.to_vec()[..] {
+                [MalType::Sym(s), MalType::Sym(x), y] if s == "def!" => {
+                    let evaluated = eval(y.clone(), env);
+                    env.set(&x, evaluated.clone());
+                    evaluated
+                }
+                [MalType::Sym(s), MalType::List(l), y] if s == "let*" => {
                     let mut new_env = Env::new();
-                    match &l.to_vec()[..] {
-                        [_, MalType::List(l), y] => {
-                            for (key, val) in l.iter().cloned().tuples() {
-                                match key {
-                                    MalType::Sym(s) => {
-                                        let evaluated = eval(val.clone(), &mut new_env);
-                                        new_env.set(&s, evaluated);
-                                    }
-                                    _ => todo!("Wrong type for symbol"),
-                                }
+                    for (key, val) in l.iter().cloned().tuples() {
+                        match key {
+                            MalType::Sym(s) => {
+                                let evaluated = eval(val.clone(), &mut new_env);
+                                new_env.set(&s, evaluated);
                             }
-                            new_env.outer = Some(env);
-                            eval(y.clone(), &mut new_env)
+                            _ => todo!("Wrong type for symbol"),
                         }
-                        _ => unreachable!("Something went wrong with 'let*'"),
                     }
+                    new_env.outer = Some(env);
+                    eval(y.clone(), &mut new_env)
                 }
                 _ => match eval_ast(&ast, env).unwrap() {
                     MalType::List(ref l) => match l.to_vec()[..] {
@@ -282,11 +272,10 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
     }
 }
 
-fn rpl() {
-    // read print loop
+fn repl() {
     let mut env = Env::new();
-
     let mut buf = String::new();
+
     loop {
         print!("mal> ");
         stdout().flush().expect("Failed to flush prompt");
@@ -306,16 +295,15 @@ fn rpl() {
 }
 
 fn main() {
-    rpl();
+    repl();
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use crate::eval;
     use crate::read_str;
     use crate::Env;
+    use std::collections::HashMap;
 
     #[test]
     fn step1() {
