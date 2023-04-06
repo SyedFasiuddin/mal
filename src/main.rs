@@ -199,7 +199,7 @@ fn read_str(s: &str) -> Result<MalType, MalErr> {
     read_form(&mut reader)
 }
 
-fn eval_ast(ast: &MalType, env: &Env) -> Result<MalType, MalErr> {
+fn eval_ast(ast: &MalType, env: &mut Env) -> Result<MalType, MalErr> {
     match ast {
         MalType::Sym(s) => match env.get(&s[..]) {
             Some(f) => Ok(f.clone()),
@@ -211,7 +211,7 @@ fn eval_ast(ast: &MalType, env: &Env) -> Result<MalType, MalErr> {
         MalType::List(l) => {
             let mut vec = vec![];
             for each in l.iter() {
-                vec.push(eval(each.clone(), env.clone()));
+                vec.push(eval(each.clone(), env));
             }
             Ok(MalType::List(Rc::new(vec)))
         }
@@ -219,13 +219,13 @@ fn eval_ast(ast: &MalType, env: &Env) -> Result<MalType, MalErr> {
     }
 }
 
-fn eval(ast: MalType, env: Env) -> MalType {
+fn eval(ast: MalType, env: &mut Env) -> MalType {
     match ast {
         MalType::List(ref l) => {
             if l.is_empty() {
                 MalType::List(l.clone())
             } else {
-                match eval_ast(&ast, &env).unwrap() {
+                match eval_ast(&ast, env).unwrap() {
                     MalType::List(ref l) => match l.clone().to_vec()[..] {
                         [MalType::Func(f), _, _] => match f(&l.clone().to_vec()[1..=2]) {
                             Ok(val) => val,
@@ -246,13 +246,13 @@ fn eval(ast: MalType, env: Env) -> MalType {
                 }
             }
         }
-        _ => eval_ast(&ast, &env).unwrap(),
+        _ => eval_ast(&ast, env).unwrap(),
     }
 }
 
 fn rpl() {
     // read print loop
-    let env = Env::new();
+    let mut env = Env::new();
 
     let mut buf = String::new();
     loop {
@@ -262,7 +262,7 @@ fn rpl() {
 
         if !buf.is_empty() {
             match read_str(&buf) {
-                Ok(mal) => println!("{}", eval(mal, env.clone()).pr_str()),
+                Ok(mal) => println!("{}", eval(mal, &mut env).pr_str()),
                 Err(e) => {
                     eprintln!("Something went wrong: {e:?}");
                 }
@@ -307,9 +307,6 @@ mod tests {
         }
     }
 
-    //////////////////////////////////////////////////////////////
-    // Step 2 tests
-
     #[test]
     fn step2() {
         let hash = HashMap::from([
@@ -321,11 +318,11 @@ mod tests {
             ("(* -3 6)", "-18"),
             ("(/ (- (+ 515 (* -87 311)) 296) 27)", "-994"),
         ]);
-        let env = Env::new();
+        let mut env = Env::new();
 
         for (input, output) in hash {
             let mal = read_str(input).unwrap();
-            assert_eq!(output, eval(mal, env.clone()).pr_str());
+            assert_eq!(output, eval(mal, &mut env).pr_str());
         }
     }
 }
