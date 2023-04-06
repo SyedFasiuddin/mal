@@ -252,3 +252,83 @@ fn rpl() {
 fn main() {
     rpl();
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::Env;
+    use crate::eval;
+    use crate::read_str;
+
+    #[test]
+    fn step2_ex1() {
+        let env = Env::new();
+        let mal = "(+ 1 2)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("3", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex2() {
+        let env = Env::new();
+        let mal = "(+ 5 (* 2 3))";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("11", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex3() {
+        let env = Env::new();
+        let mal = "(- (+ 5 (* 2 3)) 3)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("8", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex4() {
+        let env = Env::new();
+        let mal = "(/ (- (+ 5 (* 2 3)) 3) 4)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("2", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex5() {
+        let env = Env::new();
+        let mal = "(/ (- (+ 515 (* 87 311)) 302) 27)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("1010", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex6() {
+        let env = Env::new();
+        let mal = "(* -3 6)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("-18", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex7() {
+        let env = Env::new();
+        let mal = "(/ (- (+ 515 (* -87 311)) 296) 27)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("-994", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    fn step2_ex8() {
+        let env = Env::new();
+        let mal = "()";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("()", eval(mal, env.clone()).pr_str());
+    }
+
+    #[test]
+    #[should_panic]
+    fn step2_ex9() {
+        let env = Env::new();
+        let mal = "(abc 1 2)";
+        let mal = read_str(mal).unwrap();
+        eval(mal, env.clone()).pr_str();
+    }
+}
