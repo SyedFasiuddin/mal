@@ -27,6 +27,11 @@ struct Reader {
     pos: usize,
 }
 
+#[derive(Clone)]
+struct Env {
+    env: HashMap<String, MalType>
+}
+
 impl Reader {
     fn next(&mut self) -> Option<String> {
         self.pos += 1;
@@ -53,6 +58,39 @@ impl MalType {
             }
             Self::Func(_f) => "<fn>".to_string(),
         }
+    }
+}
+
+impl Env {
+    fn new() -> Self {
+        let add = MalType::Func(|vec: &[MalType]| match vec[..] {
+            [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a + b)),
+            _ => Err(MalErr::WrongNumberOfArguments),
+        });
+        let sub = MalType::Func(|vec: &[MalType]| match vec[..] {
+            [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a - b)),
+            _ => Err(MalErr::WrongNumberOfArguments),
+        });
+        let mul = MalType::Func(|vec: &[MalType]| match vec[..] {
+            [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a * b)),
+            _ => Err(MalErr::WrongNumberOfArguments),
+        });
+        let div = MalType::Func(|vec: &[MalType]| match vec[..] {
+            [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a / b)),
+            _ => Err(MalErr::WrongNumberOfArguments),
+        });
+
+        let mut env: HashMap<String, MalType> = HashMap::new();
+        env.insert("+".to_string(), add);
+        env.insert("-".to_string(), sub);
+        env.insert("*".to_string(), mul);
+        env.insert("/".to_string(), div);
+
+        Env { env }
+    }
+
+    fn get(&self, k: &str) -> Option<&MalType> {
+        self.env.get(k)
     }
 }
 
@@ -136,7 +174,7 @@ fn read_str(s: &str) -> Result<MalType, MalErr> {
     read_form(&mut reader)
 }
 
-fn eval_ast(ast: &MalType, env: &HashMap<&str, MalType>) -> Result<MalType, MalErr> {
+fn eval_ast(ast: &MalType, env: &Env) -> Result<MalType, MalErr> {
     match ast {
         MalType::Sym(s) => match env.get(&s[..]) {
             Some(f) => Ok(f.clone()),
@@ -156,7 +194,7 @@ fn eval_ast(ast: &MalType, env: &HashMap<&str, MalType>) -> Result<MalType, MalE
     }
 }
 
-fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
+fn eval(ast: MalType, env: Env) -> MalType {
     match ast {
         MalType::List(ref l) => {
             if l.is_empty() {
@@ -189,28 +227,7 @@ fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
 
 fn rpl() {
     // read print loop
-    let add = MalType::Func(|vec: &[MalType]| match vec[..] {
-        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a + b)),
-        _ => Err(MalErr::WrongNumberOfArguments),
-    });
-    let sub = MalType::Func(|vec: &[MalType]| match vec[..] {
-        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a - b)),
-        _ => Err(MalErr::WrongNumberOfArguments),
-    });
-    let mul = MalType::Func(|vec: &[MalType]| match vec[..] {
-        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a * b)),
-        _ => Err(MalErr::WrongNumberOfArguments),
-    });
-    let div = MalType::Func(|vec: &[MalType]| match vec[..] {
-        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a / b)),
-        _ => Err(MalErr::WrongNumberOfArguments),
-    });
-
-    let mut env: HashMap<&str, MalType> = HashMap::new();
-    env.insert("+", add);
-    env.insert("-", sub);
-    env.insert("*", mul);
-    env.insert("/", div);
+    let env = Env::new();
 
     let mut buf = String::new();
     loop {
