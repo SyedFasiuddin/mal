@@ -11,6 +11,7 @@ enum MalType {
     Int(i32),
     Str(String),
     Sym(String),
+    Keyword(String),
     List(Rc<Vec<MalType>>),
     Func(fn(&[MalType]) -> Result<MalType, MalErr>),
 }
@@ -20,6 +21,7 @@ enum MalErr {
     ParseErr(String),
     FuncNotFound,
     WrongNumberOfArguments,
+    UnexpectedToken,
 }
 
 struct Reader {
@@ -52,6 +54,7 @@ impl MalType {
             Self::Int(num) => format!("{num}"),
             Self::Str(s) => s.clone(),
             Self::Sym(s) => s.clone(),
+            Self::Keyword(s) => s.clone(),
             Self::List(list) => {
                 let ret: Vec<String> = list.iter().map(|x| x.pr_str()).collect();
                 format!("{}{}{}", "(", ret.join(" "), ")")
@@ -117,7 +120,7 @@ fn read_list(rd: &mut Reader, end: &str) -> Result<MalType, MalErr> {
             Some(t) => t,
             None => {
                 eprintln!("Expected {end} but found EOF");
-                exit(1);
+                return Err(MalErr::UnexpectedToken);
             }
         };
         if token == end {
@@ -131,7 +134,8 @@ fn read_list(rd: &mut Reader, end: &str) -> Result<MalType, MalErr> {
 
 fn read_atom(rd: &mut Reader) -> MalType {
     let num_re = Regex::new(r"^-?[0-9]+$").expect("Invalid regular expression for number");
-    let str_re = Regex::new(r#""(.)*""#).expect("Invalid regular expression for string");
+    let str_re = Regex::new(r#"^"(.)*"$"#).expect("Invalid regular expression for string");
+    let key_re = Regex::new(r"^:(.*)*$").expect("Invalid regular expression for keyword");
     match rd.next() {
         Some(token) => match &token[..] {
             "nil" => MalType::Nil,
@@ -142,6 +146,8 @@ fn read_atom(rd: &mut Reader) -> MalType {
                     MalType::Int(token.parse().unwrap())
                 } else if str_re.is_match(&token) {
                     MalType::Str(token.to_string())
+                } else if key_re.is_match(&token) {
+                    MalType::Keyword(token.to_string())
                 } else {
                     MalType::Sym(token.to_string())
                 }
@@ -240,7 +246,6 @@ fn rpl() {
                 Ok(mal) => println!("{}", eval(mal, env.clone()).pr_str()),
                 Err(e) => {
                     eprintln!("Something went wrong: {e:?}");
-                    exit(1);
                 }
             }
         }
@@ -258,6 +263,93 @@ mod tests {
     use crate::Env;
     use crate::eval;
     use crate::read_str;
+
+    #[test]
+    fn step1_ex1() {
+        let mal = "()";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("()", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex2() {
+        let mal = "1";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("1", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex3() {
+        let mal = "    1";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("1", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex4() {
+        let mal = "   -123";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("-123", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex6() {
+        let mal = "+";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("+", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex7() {
+        let mal = "abc";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("abc", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex8() {
+        let mal = "    abc342    ";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("abc342", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex9() {
+        let mal = "  abc-def";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("abc-def", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex10() {
+        let mal = "( *   1 2 )";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("(* 1 2)", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex11() {
+        let mal = "(nil)";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("(nil)", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex12() {
+        let mal = "(1, 2, 3,,,,),,,,";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("(1 2 3)", mal.pr_str());
+    }
+
+    #[test]
+    fn step1_ex13() {
+        let mal = "  ( +   1   (+   2 3   )   )";
+        let mal = read_str(mal).unwrap();
+        assert_eq!("(+ 1 (+ 2 3))", mal.pr_str());
+    }
+
+    //////////////////////////////////////////////////////////////
+    // Step 2 tests
 
     #[test]
     fn step2_ex1() {
@@ -316,16 +408,8 @@ mod tests {
     }
 
     #[test]
-    fn step2_ex8() {
-        let env = Env::new();
-        let mal = "()";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("()", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
     #[should_panic]
-    fn step2_ex9() {
+    fn step2_ex8() {
         let env = Env::new();
         let mal = "(abc 1 2)";
         let mal = read_str(mal).unwrap();
