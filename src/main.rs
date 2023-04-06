@@ -101,9 +101,9 @@ impl<'a> Env<'a> {
         self.env.insert(k.to_string(), v);
     }
 
-    fn find(&self, k: &str) -> Option<Self> {
+    fn find(&self, k: &str) -> Option<MalType> {
         match self.env.get(k) {
-            Some(_) => Some(self.clone()),
+            Some(val) => Some(val.clone()),
             None => match self.outer {
                 Some(env) => env.find(k),
                 None => None
@@ -112,10 +112,7 @@ impl<'a> Env<'a> {
     }
 
     fn get(&self, k: &str) -> Option<MalType> {
-        match self.find(k) {
-            Some(env) => env.env.get(k).cloned(),
-            None => None,
-        }
+        self.find(k)
     }
 }
 
