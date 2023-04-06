@@ -4,23 +4,23 @@ use regex::Regex;
 use std::process::exit;
 use std::rc::Rc;
 
-pub struct Reader {
-    pub tokens: Vec<String>,
-    pub pos: usize,
+struct Reader {
+    tokens: Vec<String>,
+    pos: usize,
 }
 
 impl Reader {
-    pub fn next(&mut self) -> Option<String> {
+    fn next(&mut self) -> Option<String> {
         self.pos += 1;
         self.tokens.get(self.pos - 1).map(|token| token.to_owned())
     }
 
-    pub fn peek(&self) -> Option<String> {
+    fn peek(&self) -> Option<String> {
         self.tokens.get(self.pos).map(|token| token.to_owned())
     }
 }
 
-pub fn tokenize(s: &str) -> Vec<String> {
+fn tokenize(s: &str) -> Vec<String> {
     let reg =
         Regex::new(r###"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"###)
             .expect("Invalid regular expression provided");
@@ -36,7 +36,7 @@ pub fn tokenize(s: &str) -> Vec<String> {
     vec
 }
 
-pub fn read_list(rd: &mut Reader, end: &str) -> Result<MalType, MalErr> {
+fn read_list(rd: &mut Reader, end: &str) -> Result<MalType, MalErr> {
     let mut vec: Vec<MalType> = vec![];
     loop {
         let token = match rd.peek() {
@@ -55,7 +55,7 @@ pub fn read_list(rd: &mut Reader, end: &str) -> Result<MalType, MalErr> {
     Ok(MalType::List(Rc::new(vec)))
 }
 
-pub fn read_atom(rd: &mut Reader) -> MalType {
+fn read_atom(rd: &mut Reader) -> MalType {
     let num_re = Regex::new(r"^-?[0-9]+$").expect("Invalid regular expression for number");
     let str_re = Regex::new(r#"^"(.)*"$"#).expect("Invalid regular expression for string");
     let key_re = Regex::new(r"^:(.*)*$").expect("Invalid regular expression for keyword");
@@ -83,7 +83,7 @@ pub fn read_atom(rd: &mut Reader) -> MalType {
     }
 }
 
-pub fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
+fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
     match rd.peek() {
         Some(token) => match &token[..] {
             "(" => {
@@ -94,4 +94,11 @@ pub fn read_form(rd: &mut Reader) -> Result<MalType, MalErr> {
         },
         None => Err(MalErr::ParseErr("No tokens found".to_string())),
     }
+}
+
+pub fn read_str(s: &str) -> Result<MalType, MalErr> {
+    let tokens = tokenize(s);
+    // println!("{:?}", tokens);
+    let mut reader = Reader { tokens, pos: 0 };
+    read_form(&mut reader)
 }

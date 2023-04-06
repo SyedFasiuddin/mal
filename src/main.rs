@@ -3,22 +3,13 @@ pub mod reader;
 pub mod types;
 
 use crate::env::Env;
-use crate::reader::read_form;
-use crate::reader::tokenize;
-use crate::reader::Reader;
+use crate::reader::read_str;
 use crate::types::MalErr;
 use crate::types::MalType;
 use itertools::Itertools;
 use std::io::{stdin, stdout, Write};
 use std::process::exit;
 use std::rc::Rc;
-
-fn read_str(s: &str) -> Result<MalType, MalErr> {
-    let tokens = tokenize(s);
-    // println!("{:?}", tokens);
-    let mut reader = Reader { tokens, pos: 0 };
-    read_form(&mut reader)
-}
 
 fn eval_ast(ast: &MalType, env: &mut Env) -> Result<MalType, MalErr> {
     match ast {
@@ -120,9 +111,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use crate::env::Env;
     use crate::eval;
-    use crate::read_str;
-    use crate::Env;
+    use crate::reader::read_str;
     use std::collections::HashMap;
 
     #[test]
@@ -193,10 +184,10 @@ mod tests {
         assert_eq!("4", eval(mal, &mut env).pr_str());
 
         /*
-           Hashmaps donot store items in the order of their insertion and so they are not
-           accessed in order in the for loop, the order is arbitrary. So this makes it very
-           diffucult to test the values are added to the environment properly and so had to
-           write the test one after the other.
+        Hashmaps donot store items in the order of their insertion and so they are not
+        accessed in order in the for loop, the order is arbitrary. So this makes it very
+        diffucult to test the values are added to the environment properly and so had to
+        write the test one after the other.
         */
     }
 }
