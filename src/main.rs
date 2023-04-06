@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use regex::Regex;
 use std::collections::HashMap;
 use std::io::{stdin, stdout, Write};
@@ -220,14 +221,43 @@ fn eval_ast(ast: &MalType, env: &mut Env) -> Result<MalType, MalErr> {
 }
 
 fn eval(ast: MalType, env: &mut Env) -> MalType {
-    match ast {
-        MalType::List(ref l) => {
+    match ast.clone() {
+        MalType::List(l) => {
             if l.is_empty() {
-                MalType::List(l.clone())
-            } else {
-                match eval_ast(&ast, env).unwrap() {
-                    MalType::List(ref l) => match l.clone().to_vec()[..] {
-                        [MalType::Func(f), _, _] => match f(&l.clone().to_vec()[1..=2]) {
+                return MalType::List(l);
+            }
+
+            match &l[0] {
+                MalType::Sym(s) if s == "def!" => match &l.to_vec()[..] {
+                    [_, MalType::Sym(x), y] => {
+                        let evaluated = eval(y.clone(), env);
+                        env.set(x, evaluated.clone());
+                        evaluated
+                    }
+                    _ => unreachable!("'def!' cannot work this way, either the types or length provided is wrong")
+                }
+                MalType::Sym(s) if s == "let*" => {
+                    let mut new_env = Env::new();
+                    match &l.to_vec()[..] {
+                        [_, MalType::List(l), y] => {
+                            for (key, val) in l.to_vec().into_iter().tuples() {
+                                match key {
+                                    MalType::Sym(s) => {
+                                        let evaluated = eval(val.clone(), &mut new_env);
+                                        new_env.set(&s, evaluated);
+                                    },
+                                    _ => todo!("Wrong type for symbol"),
+                                }
+                            }
+                            new_env.outer = Some(&env);
+                            eval(y.clone(), &mut new_env)
+                        }
+                        _ => unreachable!("Something went wrong with 'let*'")
+                    }
+                }
+                _ => match eval_ast(&ast, env).unwrap() {
+                    MalType::List(ref l) => match l.to_vec()[..] {
+                        [MalType::Func(f), _, _] => match f(&l.to_vec()[1..=2]) {
                             Ok(val) => val,
                             Err(MalErr::WrongNumberOfArguments) => {
                                 eprintln!("Wrong number of arguments provided");
@@ -235,10 +265,10 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                             }
                             Err(_) => unreachable!(
                                 "No other type of error can be returned by MalFunc"
-                            ),
+                                ),
                         },
-                        _ => todo!(),
-                    },
+                        _ => unreachable!("You are trying to do something wrong"),
+                    }
                     _ => {
                         eprintln!("Unexpected token at first position of list");
                         exit(1);
@@ -299,6 +329,8 @@ mod tests {
              ("( * 1   2   )", "(* 1 2)"),
              ("(1, 2, 3,,,,),,,", "(1 2 3)"),
              ("  ( +   1 (+  2 3  )  )", "(+ 1 (+ 2 3))"),
+             ("(def! x 3)", "(def! x 3)"),
+             ("(1 2 3 4 5 6)", "(1 2 3 4 5 6)"),
         ]);
 
         for (input, output) in hash {
@@ -324,5 +356,37 @@ mod tests {
             let mal = read_str(input).unwrap();
             assert_eq!(output, eval(mal, &mut env).pr_str());
         }
+    }
+
+    #[test]
+    fn step3() {
+        let hash = HashMap::from([
+            ("(def! x 3)", "3"),
+            ("(def! x (+ 1 7))", "8"),
+            ("(def! y (let* (z 7) z))", "7"),
+            ("(let* (z 9) z)", "9"),
+            ("(let* (z (+ 2 3)) (+ 1 z))", "6"),
+            ("(let* (p (+ 2 3) q (+ 2 p)) (+ p q))", "12"),
+            ("(let* (x 2 x 3) x)", "3"),
+        ]);
+        let mut env = Env::new();
+
+        for (input, output) in hash {
+            let mal = read_str(input).unwrap();
+            assert_eq!(output, eval(mal, &mut env).pr_str());
+        }
+
+        let mal = read_str("(def! a 4)").unwrap();
+        assert_eq!("4", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(let* (z 2) (let* (q 9) a))").unwrap();
+        assert_eq!("4", eval(mal, &mut env).pr_str());
+
+        /*
+           Hashmaps donot store items in the order of their insertion and so they are not
+           accessed in order in the for loop, the order is arbitrary. So this makes it very
+           diffucult to test the values are added to the environment properly and so had to
+           write the test one after the other.
+        */
     }
 }
