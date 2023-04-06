@@ -107,8 +107,8 @@ impl<'a> Env<'a> {
             Some(val) => Some(val.clone()),
             None => match self.outer {
                 Some(env) => env.find(k),
-                None => None
-            }
+                None => None,
+            },
         }
     }
 
@@ -203,7 +203,7 @@ fn read_str(s: &str) -> Result<MalType, MalErr> {
 fn eval_ast(ast: &MalType, env: &mut Env) -> Result<MalType, MalErr> {
     match ast {
         MalType::Sym(s) => match env.get(&s[..]) {
-            Some(f) => Ok(f.clone()),
+            Some(f) => Ok(f),
             None => {
                 eprintln!("Unable to find {s} in current environment");
                 Err(MalErr::FuncNotFound)
@@ -234,25 +234,27 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                         env.set(x, evaluated.clone());
                         evaluated
                     }
-                    _ => unreachable!("'def!' cannot work this way, either the types or length provided is wrong")
-                }
+                    _ => unreachable!(
+                        "'def!' cannot work this way, either the types or length provided is wrong"
+                    ),
+                },
                 MalType::Sym(s) if s == "let*" => {
                     let mut new_env = Env::new();
                     match &l.to_vec()[..] {
                         [_, MalType::List(l), y] => {
-                            for (key, val) in l.to_vec().into_iter().tuples() {
+                            for (key, val) in l.iter().cloned().tuples() {
                                 match key {
                                     MalType::Sym(s) => {
                                         let evaluated = eval(val.clone(), &mut new_env);
                                         new_env.set(&s, evaluated);
-                                    },
+                                    }
                                     _ => todo!("Wrong type for symbol"),
                                 }
                             }
-                            new_env.outer = Some(&env);
+                            new_env.outer = Some(env);
                             eval(y.clone(), &mut new_env)
                         }
-                        _ => unreachable!("Something went wrong with 'let*'")
+                        _ => unreachable!("Something went wrong with 'let*'"),
                     }
                 }
                 _ => match eval_ast(&ast, env).unwrap() {
@@ -263,17 +265,17 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                                 eprintln!("Wrong number of arguments provided");
                                 todo!("Handle err when wrong number of arguments were provided");
                             }
-                            Err(_) => unreachable!(
-                                "No other type of error can be returned by MalFunc"
-                                ),
+                            Err(_) => {
+                                unreachable!("No other type of error can be returned by MalFunc")
+                            }
                         },
                         _ => unreachable!("You are trying to do something wrong"),
-                    }
+                    },
                     _ => {
                         eprintln!("Unexpected token at first position of list");
                         exit(1);
                     }
-                }
+                },
             }
         }
         _ => eval_ast(&ast, env).unwrap(),
@@ -311,26 +313,26 @@ fn main() {
 mod tests {
     use std::collections::HashMap;
 
-    use crate::Env;
     use crate::eval;
     use crate::read_str;
+    use crate::Env;
 
     #[test]
     fn step1() {
         let hash = HashMap::from([
-             ("()", "()"),
-             ("1", "1"),
-             ("    1", "1"),
-             ("    -123    ", "-123"),
-             ("+", "+"),
-             ("    abc", "abc"),
-             ("    abc123    ", "abc123"),
-             ("abc-def", "abc-def"),
-             ("( * 1   2   )", "(* 1 2)"),
-             ("(1, 2, 3,,,,),,,", "(1 2 3)"),
-             ("  ( +   1 (+  2 3  )  )", "(+ 1 (+ 2 3))"),
-             ("(def! x 3)", "(def! x 3)"),
-             ("(1 2 3 4 5 6)", "(1 2 3 4 5 6)"),
+            ("()", "()"),
+            ("1", "1"),
+            ("    1", "1"),
+            ("    -123    ", "-123"),
+            ("+", "+"),
+            ("    abc", "abc"),
+            ("    abc123    ", "abc123"),
+            ("abc-def", "abc-def"),
+            ("( * 1   2   )", "(* 1 2)"),
+            ("(1, 2, 3,,,,),,,", "(1 2 3)"),
+            ("  ( +   1 (+  2 3  )  )", "(+ 1 (+ 2 3))"),
+            ("(def! x 3)", "(def! x 3)"),
+            ("(1 2 3 4 5 6)", "(1 2 3 4 5 6)"),
         ]);
 
         for (input, output) in hash {
