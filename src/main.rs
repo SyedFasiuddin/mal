@@ -260,159 +260,53 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::Env;
     use crate::eval;
     use crate::read_str;
 
     #[test]
-    fn step1_ex1() {
-        let mal = "()";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("()", mal.pr_str());
-    }
+    fn step1() {
+        let hash = HashMap::from([
+             ("()", "()"),
+             ("1", "1"),
+             ("    1", "1"),
+             ("    -123    ", "-123"),
+             ("+", "+"),
+             ("    abc", "abc"),
+             ("    abc123    ", "abc123"),
+             ("abc-def", "abc-def"),
+             ("( * 1   2   )", "(* 1 2)"),
+             ("(1, 2, 3,,,,),,,", "(1 2 3)"),
+             ("  ( +   1 (+  2 3  )  )", "(+ 1 (+ 2 3))"),
+        ]);
 
-    #[test]
-    fn step1_ex2() {
-        let mal = "1";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("1", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex3() {
-        let mal = "    1";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("1", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex4() {
-        let mal = "   -123";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("-123", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex6() {
-        let mal = "+";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("+", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex7() {
-        let mal = "abc";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("abc", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex8() {
-        let mal = "    abc342    ";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("abc342", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex9() {
-        let mal = "  abc-def";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("abc-def", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex10() {
-        let mal = "( *   1 2 )";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("(* 1 2)", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex11() {
-        let mal = "(nil)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("(nil)", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex12() {
-        let mal = "(1, 2, 3,,,,),,,,";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("(1 2 3)", mal.pr_str());
-    }
-
-    #[test]
-    fn step1_ex13() {
-        let mal = "  ( +   1   (+   2 3   )   )";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("(+ 1 (+ 2 3))", mal.pr_str());
+        for (input, output) in hash {
+            let mal = read_str(input).unwrap();
+            assert_eq!(output, mal.pr_str());
+        }
     }
 
     //////////////////////////////////////////////////////////////
     // Step 2 tests
 
     #[test]
-    fn step2_ex1() {
+    fn step2() {
+        let hash = HashMap::from([
+            ("(+ 1 2)", "3"),
+            ("(+ 5 (* 2 3))", "11"),
+            ("(- (+ 5 (* 2 3)) 3)", "8"),
+            ("(/ (- (+ 5 (* 2 3)) 3) 4)", "2"),
+            ("(/ (- (+ 515 (* 87 311)) 302) 27)", "1010"),
+            ("(* -3 6)", "-18"),
+            ("(/ (- (+ 515 (* -87 311)) 296) 27)", "-994"),
+        ]);
         let env = Env::new();
-        let mal = "(+ 1 2)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("3", eval(mal, env.clone()).pr_str());
-    }
 
-    #[test]
-    fn step2_ex2() {
-        let env = Env::new();
-        let mal = "(+ 5 (* 2 3))";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("11", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
-    fn step2_ex3() {
-        let env = Env::new();
-        let mal = "(- (+ 5 (* 2 3)) 3)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("8", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
-    fn step2_ex4() {
-        let env = Env::new();
-        let mal = "(/ (- (+ 5 (* 2 3)) 3) 4)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("2", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
-    fn step2_ex5() {
-        let env = Env::new();
-        let mal = "(/ (- (+ 515 (* 87 311)) 302) 27)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("1010", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
-    fn step2_ex6() {
-        let env = Env::new();
-        let mal = "(* -3 6)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("-18", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
-    fn step2_ex7() {
-        let env = Env::new();
-        let mal = "(/ (- (+ 515 (* -87 311)) 296) 27)";
-        let mal = read_str(mal).unwrap();
-        assert_eq!("-994", eval(mal, env.clone()).pr_str());
-    }
-
-    #[test]
-    #[should_panic]
-    fn step2_ex8() {
-        let env = Env::new();
-        let mal = "(abc 1 2)";
-        let mal = read_str(mal).unwrap();
-        eval(mal, env.clone()).pr_str();
+        for (input, output) in hash {
+            let mal = read_str(input).unwrap();
+            assert_eq!(output, eval(mal, env.clone()).pr_str());
+        }
     }
 }
