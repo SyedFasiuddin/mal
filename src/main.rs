@@ -30,8 +30,9 @@ struct Reader {
 }
 
 #[derive(Clone)]
-struct Env {
-    env: HashMap<String, MalType>
+struct Env<'a> {
+    env: HashMap<String, MalType>,
+    outer: Option<&'a Env<'a>>,
 }
 
 impl Reader {
@@ -64,7 +65,7 @@ impl MalType {
     }
 }
 
-impl Env {
+impl<'a> Env<'a> {
     fn new() -> Self {
         let add = MalType::Func(|vec: &[MalType]| match vec[..] {
             [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a + b)),
@@ -83,17 +84,38 @@ impl Env {
             _ => Err(MalErr::WrongNumberOfArguments),
         });
 
-        let mut env: HashMap<String, MalType> = HashMap::new();
-        env.insert("+".to_string(), add);
-        env.insert("-".to_string(), sub);
-        env.insert("*".to_string(), mul);
-        env.insert("/".to_string(), div);
+        let mut env = Env {
+            env: HashMap::new(),
+            outer: None,
+        };
 
-        Env { env }
+        env.set("+", add);
+        env.set("-", sub);
+        env.set("*", mul);
+        env.set("/", div);
+
+        env
     }
 
-    fn get(&self, k: &str) -> Option<&MalType> {
-        self.env.get(k)
+    fn set(&mut self, k: &str, v: MalType) {
+        self.env.insert(k.to_string(), v);
+    }
+
+    fn find(&self, k: &str) -> Option<Self> {
+        match self.env.get(k) {
+            Some(_) => Some(self.clone()),
+            None => match self.outer {
+                Some(env) => env.find(k),
+                None => None
+            }
+        }
+    }
+
+    fn get(&self, k: &str) -> Option<MalType> {
+        match self.find(k) {
+            Some(env) => env.env.get(k).cloned(),
+            None => None,
+        }
     }
 }
 
