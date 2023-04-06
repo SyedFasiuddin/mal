@@ -4,7 +4,7 @@ use std::io::{stdin, stdout, Write};
 use std::process::exit;
 use std::rc::Rc;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 enum MalType {
     Nil,
     Bool(bool),
@@ -12,13 +12,14 @@ enum MalType {
     Str(String),
     Sym(String),
     List(Rc<Vec<MalType>>),
-    Func(fn(i32, i32) -> i32),
+    Func(fn(&[MalType]) -> Result<MalType, MalErr>),
 }
 
 #[derive(Debug)]
 enum MalErr {
     ParseErr(String),
     FuncNotFound,
+    WrongNumberOfArguments,
 }
 
 struct Reader {
@@ -50,7 +51,7 @@ impl MalType {
                 let ret: Vec<String> = list.iter().map(|x| x.pr_str()).collect();
                 format!("{}{}{}", "(", ret.join(" "), ")")
             }
-            Self::Func(_f) => todo!(),
+            Self::Func(_f) => "<fn>".to_string(),
         }
     }
 }
@@ -163,9 +164,16 @@ fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
             } else {
                 match eval_ast(&ast, &env).unwrap() {
                     MalType::List(ref l) => match l.clone().to_vec()[..] {
-                        [MalType::Func(f), MalType::Int(a), MalType::Int(b)] => {
-                            MalType::Int(f(a, b))
-                        }
+                        [MalType::Func(f), _, _] => match f(&l.clone().to_vec()[1..=2]) {
+                            Ok(val) => val,
+                            Err(MalErr::WrongNumberOfArguments) => {
+                                eprintln!("Wrong number of arguments provided");
+                                todo!("Handle err when wrong number of arguments were provided");
+                            }
+                            Err(_) => unreachable!(
+                                "No other type of error can be returned by MalFunc"
+                            ),
+                        },
                         _ => todo!(),
                     },
                     _ => {
@@ -181,10 +189,22 @@ fn eval(ast: MalType, env: HashMap<&str, MalType>) -> MalType {
 
 fn rpl() {
     // read print loop
-    let add = MalType::Func(|a: i32, b: i32| a + b);
-    let sub = MalType::Func(|a: i32, b: i32| a - b);
-    let mul = MalType::Func(|a: i32, b: i32| a * b);
-    let div = MalType::Func(|a: i32, b: i32| a / b);
+    let add = MalType::Func(|vec: &[MalType]| match vec[..] {
+        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a + b)),
+        _ => Err(MalErr::WrongNumberOfArguments),
+    });
+    let sub = MalType::Func(|vec: &[MalType]| match vec[..] {
+        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a - b)),
+        _ => Err(MalErr::WrongNumberOfArguments),
+    });
+    let mul = MalType::Func(|vec: &[MalType]| match vec[..] {
+        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a * b)),
+        _ => Err(MalErr::WrongNumberOfArguments),
+    });
+    let div = MalType::Func(|vec: &[MalType]| match vec[..] {
+        [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a / b)),
+        _ => Err(MalErr::WrongNumberOfArguments),
+    });
 
     let mut env: HashMap<&str, MalType> = HashMap::new();
     env.insert("+", add);
