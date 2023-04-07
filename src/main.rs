@@ -45,7 +45,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                     evaluated
                 }
                 [MalType::Sym(s), MalType::List(l), y] if s == "let*" => {
-                    let mut new_env = Env::new();
+                    let mut new_env = Env::default();
                     for (key, val) in l.iter().cloned().tuples() {
                         match key {
                             MalType::Sym(s) => {
@@ -84,7 +84,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
 }
 
 fn repl() {
-    let mut env = Env::new();
+    let mut env = Env::default();
     let mut buf = String::new();
 
     loop {
@@ -151,7 +151,7 @@ mod tests {
             ("(* -3 6)", "-18"),
             ("(/ (- (+ 515 (* -87 311)) 296) 27)", "-994"),
         ]);
-        let mut env = Env::new();
+        let mut env = Env::default();
 
         for (input, output) in hash {
             let mal = read_str(input).unwrap();
@@ -170,7 +170,7 @@ mod tests {
             ("(let* (p (+ 2 3) q (+ 2 p)) (+ p q))", "12"),
             ("(let* (x 2 x 3) x)", "3"),
         ]);
-        let mut env = Env::new();
+        let mut env = Env::default();
 
         for (input, output) in hash {
             let mal = read_str(input).unwrap();

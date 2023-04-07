@@ -8,8 +8,8 @@ pub struct Env<'a> {
     pub outer: Option<&'a Env<'a>>,
 }
 
-impl<'a> Env<'a> {
-    pub fn new() -> Self {
+impl<'a> Default for Env<'a> {
+    fn default() -> Self {
         let add = MalType::Func(|vec: &[MalType]| match vec[..] {
             [MalType::Int(a), MalType::Int(b)] => Ok(MalType::Int(a + b)),
             _ => Err(MalErr::WrongNumberOfArguments),
@@ -39,7 +39,9 @@ impl<'a> Env<'a> {
 
         env
     }
+}
 
+impl<'a> Env<'a> {
     pub fn set(&mut self, k: &str, v: MalType) {
         self.env.insert(k.to_string(), v);
     }
