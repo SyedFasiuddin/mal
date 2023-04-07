@@ -58,6 +58,24 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                     new_env.outer = Some(env);
                     eval(y.clone(), &mut new_env)
                 }
+                [MalType::Sym(s), ..] if s == "do" =>
+                    match eval_ast(&MalType::List(Rc::new(l[1..].to_vec())), env).unwrap() {
+                        MalType::List(l) => l.last().unwrap().clone(),
+                        _ => unreachable!("Wrong do form"),
+                }
+                [MalType::Sym(s), ..] if s == "if" => {
+                    match eval(l[1].clone(), env) {
+                        MalType::Nil | MalType::Bool(false) => {
+                            if l.len() > 3 {
+                                eval(l[3].clone(), env)
+                            } else {
+                                MalType::Nil
+                            }
+                        }
+                        MalType::Bool(true) => eval(l[2].clone(), env),
+                        _ => eval(l[2].clone(), env)
+                    }
+                }
                 _ => match eval_ast(&ast, env).unwrap() {
                     MalType::List(ref l) => match l.to_vec()[..] {
                         [MalType::Func(f), _, _] => match f(&l.to_vec()[1..=2]) {
@@ -189,5 +207,31 @@ mod tests {
         diffucult to test the values are added to the environment properly and so had to
         write the test one after the other.
         */
+    }
+
+    #[test]
+    fn step4() {
+        let hash = HashMap::from([
+            ("(do (def! a 6) 7 (+ a 8))", "14"),
+            ("(def! DO 7)", "7"),
+            ("(if true 7 8)", "7"),
+            ("(if false 7 8)", "8"),
+            ("(if false 7)", "nil"),
+            ("(if false 7 false)", "false"),
+            ("(if true (+ 1 7) (+ 1 8))", "8"),
+            ("(if false (+ 1 7) (+ 1 8))", "9"),
+            ("(if nil 7 8)", "8"),
+            ("(if 0 7 8)", "7"),
+            ("(if false (+ 1 7))", "nil"),
+            ("(if nil 8)", "nil"),
+            ("(if nil 8 7)", "7"),
+            ("(if true (+ 1 7))", "8"),
+        ]);
+        let mut env = Env::default();
+
+        for (input, output) in hash {
+            let mal = read_str(input).unwrap();
+            assert_eq!(output, eval(mal, &mut env).pr_str());
+        }
     }
 }
