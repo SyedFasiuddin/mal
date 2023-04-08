@@ -21,6 +21,7 @@ pub enum MalType {
 #[derive(Debug)]
 pub enum MalErr {
     ParseErr(String),
+    E(String),
     FuncNotFound,
     WrongNumberOfArguments,
     UnexpectedToken,
