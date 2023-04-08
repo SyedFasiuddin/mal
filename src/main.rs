@@ -83,11 +83,11 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                 },
                 _ => match eval_ast(&ast, env).unwrap() {
                     MalType::List(ref l) => match &l.to_vec()[..] {
-                        [MalType::Func(f), _, _] => match f(&l.to_vec()[1..=2]) {
+                        [MalType::Func(f), ..] => match f(&l.to_vec()[1..]) {
                             Ok(val) => val,
-                            Err(MalErr::WrongNumberOfArguments) => {
-                                eprintln!("Wrong number of arguments provided");
-                                todo!("Handle err when wrong number of arguments were provided");
+                            Err(MalErr::E(s)) => {
+                                eprintln!("{s}");
+                                MalType::Nil
                             }
                             Err(_) => {
                                 unreachable!("No other type of error can be returned by MalFunc")
@@ -99,7 +99,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                             new_env.outer = Some(Box::new(env.clone()));
                             eval(*body.to_owned(), &mut new_env)
                         }
-                        _ => unreachable!("You are trying to do something wrong"),
+                        _ => eval_ast(&ast, env).unwrap(),
                     },
                     _ => {
                         eprintln!("Unexpected token at first position of list");
@@ -277,5 +277,47 @@ mod tests {
         eval(mal, &mut env);
         let mal = read_str("(sumdown 6)").unwrap();
         assert_eq!("21", eval(mal, &mut env).pr_str());
+
+        let mal = read_str(
+            "(def! fib (fn* (N) (if (= N 0) 1 (if (= N 1) 1 (+ (fib (- N 1)) (fib (- N 2)))))))",
+        )
+        .unwrap();
+        eval(mal, &mut env);
+        let mal = read_str("(fib 4)").unwrap();
+        assert_eq!("5", eval(mal, &mut env).pr_str());
+    }
+
+    #[test]
+    fn test_stdlib() {
+        let hash = HashMap::from([
+            (r#"(= "" "")"#, "true"),
+            (r#"(= "abc" "abc")"#, "true"),
+            (r#"(= "abc" "")"#, "false"),
+            (r#"(= "abc" "")"#, "false"),
+            (r#"(= "" "abc")"#, "false"),
+            (r#"(= "abc" "def")"#, "false"),
+            (r#"(= "abc" "ABC")"#, "false"),
+            (r#"(if "" 9 4)"#, "9"),
+            ("(= 1 1)", "true"),
+            ("(= 1 2)", "false"),
+            ("(< 81 94)", "true"),
+            ("(<= 1 2)", "true"),
+            ("(>= 1 1)", "true"),
+            ("(>= 1 2)", "false"),
+            ("(list 1 2 3)", "(1 2 3)"),
+            ("(list)", "()"),
+            ("(count (1 2 3))", "3"),
+            ("(count (list))", "0"),
+            ("(list? 1 2)", "false"),
+            ("(list? (1) 2)", "true"),
+            ("(list? (list))", "true"),
+            ("(empty? (list))", "true"),
+        ]);
+        let mut env = Env::default();
+
+        for (input, output) in hash {
+            let mal = read_str(input).unwrap();
+            assert_eq!(output, eval(mal, &mut env).pr_str());
+        }
     }
 }
