@@ -1,3 +1,4 @@
+use crate::env::Env;
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -10,6 +11,11 @@ pub enum MalType {
     Keyword(String),
     List(Rc<Vec<MalType>>),
     Func(fn(&[MalType]) -> Result<MalType, MalErr>),
+    MalFunc {
+        env: Env,
+        params: Vec<MalType>,
+        body: Box<MalType>,
+    },
 }
 
 #[derive(Debug)]
@@ -34,7 +40,8 @@ impl MalType {
                 let ret: Vec<String> = list.iter().map(|x| x.pr_str()).collect();
                 format!("{}{}{}", "(", ret.join(" "), ")")
             }
-            Self::Func(_f) => "<fn>".to_string(),
+            Self::Func(_f) => "<std:fn>".to_string(),
+            Self::MalFunc { .. } => "<user:fn>".to_string(),
         }
     }
 }
