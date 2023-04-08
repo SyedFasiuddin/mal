@@ -55,7 +55,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                             _ => todo!("Wrong type for symbol"),
                         }
                     }
-                    new_env.outer = Some(env);
+                    new_env.outer = Some(Box::new(env.clone()));
                     eval(y.clone(), &mut new_env)
                 }
                 [MalType::Sym(s), ..] if s == "do" =>
@@ -76,8 +76,13 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                         _ => eval(l[2].clone(), env)
                     }
                 }
+                [MalType::Sym(s), MalType::List(params), body] if s == "fn*" => MalType::MalFunc {
+                    env: env.clone(),
+                    params: params.clone().to_vec(),
+                    body: Box::new(body.clone()),
+                },
                 _ => match eval_ast(&ast, env).unwrap() {
-                    MalType::List(ref l) => match l.to_vec()[..] {
+                    MalType::List(ref l) => match &l.to_vec()[..] {
                         [MalType::Func(f), _, _] => match f(&l.to_vec()[1..=2]) {
                             Ok(val) => val,
                             Err(MalErr::WrongNumberOfArguments) => {
@@ -88,6 +93,12 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                                 unreachable!("No other type of error can be returned by MalFunc")
                             }
                         },
+                        [MalType::MalFunc { env, params, body }, ..] => {
+                            let exprs = l[1..].to_vec();
+                            let mut new_env = Env::new(params.to_vec(), exprs);
+                            new_env.outer = Some(Box::new(env.clone()));
+                            eval(*body.to_owned(), &mut new_env)
+                        }
                         _ => unreachable!("You are trying to do something wrong"),
                     },
                     _ => {
@@ -226,6 +237,14 @@ mod tests {
             ("(if nil 8)", "nil"),
             ("(if nil 8 7)", "7"),
             ("(if true (+ 1 7))", "8"),
+            ("(fn* (a) a)", "<user:fn>"),
+            ("( (fn* () 4) )", "4"),
+            ("( (fn* (a) a) 7)", "7"),
+            ("( (fn* (a) (+ a 1)) 10)", "11"),
+            ("( (fn* (a b) (+ b a)) 3 4)", "7"),
+            ("( (fn* (a b) (+ a b)) 2 3)", "5"),
+            ("( (fn* (f x) (f x)) (fn* (a) (+ 1 a)) 7)", "8"),
+            ("( ( (fn* (a) (fn* (b) (+ a b))) 5) 7)", "12"),
         ]);
         let mut env = Env::default();
 
