@@ -58,24 +58,23 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                     new_env.outer = Some(Box::new(env.clone()));
                     eval(y.clone(), &mut new_env)
                 }
-                [MalType::Sym(s), ..] if s == "do" =>
+                [MalType::Sym(s), ..] if s == "do" => {
                     match eval_ast(&MalType::List(Rc::new(l[1..].to_vec())), env).unwrap() {
                         MalType::List(l) => l.last().unwrap().clone(),
                         _ => unreachable!("Wrong do form"),
-                }
-                [MalType::Sym(s), ..] if s == "if" => {
-                    match eval(l[1].clone(), env) {
-                        MalType::Nil | MalType::Bool(false) => {
-                            if l.len() > 3 {
-                                eval(l[3].clone(), env)
-                            } else {
-                                MalType::Nil
-                            }
-                        }
-                        MalType::Bool(true) => eval(l[2].clone(), env),
-                        _ => eval(l[2].clone(), env)
                     }
                 }
+                [MalType::Sym(s), ..] if s == "if" => match eval(l[1].clone(), env) {
+                    MalType::Nil | MalType::Bool(false) => {
+                        if l.len() > 3 {
+                            eval(l[3].clone(), env)
+                        } else {
+                            MalType::Nil
+                        }
+                    }
+                    MalType::Bool(true) => eval(l[2].clone(), env),
+                    _ => eval(l[2].clone(), env),
+                },
                 [MalType::Sym(s), MalType::List(params), body] if s == "fn*" => MalType::MalFunc {
                     env: env.clone(),
                     params: params.clone().to_vec(),
