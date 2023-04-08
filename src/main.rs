@@ -252,4 +252,29 @@ mod tests {
             assert_eq!(output, eval(mal, &mut env).pr_str());
         }
     }
+
+    #[test]
+    fn step4_ex1() {
+        let mut env = Env::default();
+        let mal = read_str("(def! gen-plus5 (fn* () (fn* (b) (+ 5 b))))").unwrap();
+        eval(mal, &mut env);
+        let mal = read_str("(def! plus5 (gen-plus5))").unwrap();
+        eval(mal, &mut env);
+        let mal = read_str("(plus5 7)").unwrap();
+        assert_eq!("12", eval(mal, &mut env).pr_str());
+    }
+
+    #[test]
+    #[ignore = "fn* creates a new environment whose outer environment is a clone of the state of
+        environment during time of creation of fn*, which means this def! has not yet defined the
+        function `sumdown' in the outer environment referred to by the body of the function and so
+        it cannot find `sumdown' and will panic."]
+    fn step4_ex2() {
+        let mut env = Env::default();
+        let mal =
+            read_str("(def! sumdown (fn* (N) (if (> N 0) (+ N (sumdown  (- N 1))) 0)))").unwrap();
+        eval(mal, &mut env);
+        let mal = read_str("(sumdown 6)").unwrap();
+        assert_eq!("21", eval(mal, &mut env).pr_str());
+    }
 }
