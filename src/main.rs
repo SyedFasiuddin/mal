@@ -73,7 +73,6 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                             MalType::Nil
                         }
                     }
-                    MalType::Bool(true) => eval(l[2].clone(), env),
                     _ => eval(l[2].clone(), env),
                 },
                 [MalType::Sym(s), MalType::List(params), body] if s == "fn*" => MalType::MalFunc {
@@ -319,5 +318,30 @@ mod tests {
             let mal = read_str(input).unwrap();
             assert_eq!(output, eval(mal, &mut env).pr_str());
         }
+    }
+
+    #[test]
+    #[ignore = "not implemented"]
+    fn step5() {
+        let mut env = Env::default();
+        let mal = read_str("(def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc)))))").unwrap();
+        eval(mal, &mut env);
+        let mal = read_str("(sum2 10 0)").unwrap();
+        assert_eq!("55", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(def! res2 nil)").unwrap();
+        assert_eq!("nil", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(def! res2 (sum2 10000 0))").unwrap();
+        assert_eq!("res2", eval(mal, &mut env).pr_str());
+        let mal = read_str("res2").unwrap();
+        assert_eq!("50005000", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(def! foo (fn* (n) (if (= n 0) 0 (bar (- n 1)))))").unwrap();
+        eval(mal, &mut env).pr_str();
+        let mal = read_str("(def! bar (fn* (n) (if (= n 0) 0 (foo (- n 1)))))").unwrap();
+        eval(mal, &mut env).pr_str();
+        let mal = read_str("(foo 10000)").unwrap();
+        assert_eq!("0", eval(mal, &mut env).pr_str());
     }
 }
