@@ -56,7 +56,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                             _ => todo!("Wrong type for symbol"),
                         }
                     }
-                    new_env.outer = Some(Box::new(env.clone()));
+                    new_env.outer = Some(Rc::new((*env).clone()));
                     eval(y.clone(), &mut new_env)
                 }
                 [MalType::Sym(s), ..] if s == "do" => {
@@ -76,7 +76,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                     _ => eval(l[2].clone(), env),
                 },
                 [MalType::Sym(s), MalType::List(params), body] if s == "fn*" => MalType::MalFunc {
-                    env: env.clone(),
+                    env: Rc::new((*env).clone()),
                     params: params.clone().to_vec(),
                     body: Box::new(body.clone()),
                 },
@@ -95,7 +95,7 @@ fn eval(ast: MalType, env: &mut Env) -> MalType {
                         [MalType::MalFunc { env, params, body }, ..] => {
                             let exprs = l[1..].to_vec();
                             let mut new_env = Env::new(params.to_vec(), exprs);
-                            new_env.outer = Some(Box::new(env.clone()));
+                            new_env.outer = Some(env.clone());
                             eval(*body.to_owned(), &mut new_env)
                         }
                         _ => eval_ast(&ast, env).unwrap(),

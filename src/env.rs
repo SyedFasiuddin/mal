@@ -1,18 +1,19 @@
 use crate::core;
 use crate::MalType;
-use std::borrow::BorrowMut;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct Env {
-    env: HashMap<String, MalType>,
-    pub outer: Option<Box<Env>>,
+    env: RefCell<HashMap<String, MalType>>,
+    pub outer: Option<Rc<Env>>,
 }
 
 impl Default for Env {
     fn default() -> Self {
         let mut env = Env {
-            env: HashMap::new(),
+            env: RefCell::new(HashMap::new()),
             outer: None,
         };
 
@@ -39,7 +40,7 @@ impl Env {
     }
 
     fn find(&self, k: &str) -> Option<MalType> {
-        match self.env.get(k) {
+        match self.env.borrow().get(k) {
             Some(val) => Some(val.clone()),
             None => match &self.outer {
                 Some(env) => env.find(k),

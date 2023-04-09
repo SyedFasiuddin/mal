@@ -12,7 +12,7 @@ pub enum MalType {
     List(Rc<Vec<MalType>>),
     Func(fn(&[MalType]) -> Result<MalType, MalErr>),
     MalFunc {
-        env: Env,
+        env: Rc<Env>,
         params: Vec<MalType>,
         body: Box<MalType>,
     },
