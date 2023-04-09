@@ -269,7 +269,7 @@ mod tests {
         environment during time of creation of fn*, which means this def! has not yet defined the
         function `sumdown' in the outer environment referred to by the body of the function and so
         it cannot find `sumdown' and will panic."]
-    fn step4_ex2() {
+    fn step4_reccursive_fn() {
         let mut env = Env::default();
         let mal =
             read_str("(def! sumdown (fn* (N) (if (> N 0) (+ N (sumdown  (- N 1))) 0)))").unwrap();
@@ -284,6 +284,19 @@ mod tests {
         eval(mal, &mut env);
         let mal = read_str("(fib 4)").unwrap();
         assert_eq!("5", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(def! sum2 (fn* (n acc) (if (= n 0) acc (sum2 (- n 1) (+ n acc)))))").unwrap();
+        eval(mal, &mut env);
+        let mal = read_str("(sum2 10 0)").unwrap();
+        assert_eq!("55", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(def! res2 nil)").unwrap();
+        assert_eq!("nil", eval(mal, &mut env).pr_str());
+
+        let mal = read_str("(def! res2 (sum2 10000 0))").unwrap();
+        assert_eq!("res2", eval(mal, &mut env).pr_str());
+        let mal = read_str("res2").unwrap();
+        assert_eq!("50005000", eval(mal, &mut env).pr_str());
     }
 
     #[test]
